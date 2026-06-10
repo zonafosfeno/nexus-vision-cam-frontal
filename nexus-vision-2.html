@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS VISION — Sacred Stream</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;color:#fff;font-family:'Courier New',monospace;overflow:hidden;width:100vw;height:100vh}
+#video{position:absolute;width:100%;height:100%;object-fit:cover;display:none}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+#cvMain{z-index:2}#cvGeom{z-index:3}#cvPoem{z-index:4}
+#ui{position:absolute;inset:0;z-index:10;pointer-events:none}
+#topBar{position:absolute;top:0;left:0;right:0;height:52px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.88),transparent);
+  display:flex;align-items:center;padding:0 18px;gap:14px}
+#title{font-size:1.1em;font-weight:bold;color:#00ffcc;
+  text-shadow:0 0 14px #00ffcc;letter-spacing:5px}
+.dot{width:7px;height:7px;border-radius:50%;background:#00ff88;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+#fps{font-size:.6em;color:rgba(255,255,255,.3);letter-spacing:2px;margin-left:auto}
+#btns{position:absolute;top:8px;right:16px;display:flex;gap:8px;pointer-events:all}
+.btn{padding:7px 14px;font-family:'Courier New',monospace;font-size:.72em;cursor:pointer;
+  border-radius:4px;text-transform:uppercase;letter-spacing:2px;transition:all .2s}
+#camBtn{background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.35);color:#00ccff}
+#camBtn:active{transform:scale(.9)}
+#audioBtn{background:rgba(0,255,100,.08);border:1px solid rgba(0,255,100,.35);color:#00ff64}
+#audioBtn.on{color:#00ff88;border-color:#00ff88;box-shadow:0 0 10px rgba(0,255,100,.4)}
+#recBtn{background:rgba(255,0,50,.12);border:1px solid rgba(255,0,50,.4);color:#ff3366}
+#recBtn.rec{animation:recPulse .5s infinite}
+@keyframes recPulse{0%,100%{box-shadow:0 0 8px rgba(255,0,50,.5)}50%{box-shadow:0 0 22px rgba(255,0,50,1)}}
+#bottomBar{position:absolute;bottom:0;left:0;right:0;height:78px;
+  background:linear-gradient(to top,rgba(0,0,0,.9),transparent);
+  display:flex;align-items:flex-end;padding:10px 20px;gap:24px}
+.icard{display:flex;flex-direction:column;gap:2px}
+.ilabel{font-size:.55em;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:2px}
+.ival{font-size:1em;text-shadow:0 0 8px currentColor}
+#leftPanel{position:absolute;top:60px;left:10px;width:220px;display:flex;flex-direction:column;gap:4px}
+.plabel{font-size:.56em;color:rgba(255,255,255,.28);letter-spacing:2px;margin-bottom:4px}
+.otag{padding:5px 10px;border-radius:3px;font-size:.7em;background:rgba(0,0,0,.6);
+  border-left:3px solid #00ffcc;animation:slideIn .25s ease}
+.oprm{font-size:.58em;font-style:italic;opacity:.55;margin-top:1px;font-family:'Cormorant Garamond',serif}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+#segInfo{position:absolute;top:60px;right:10px;width:180px;display:flex;flex-direction:column;gap:3px}
+.segtag{padding:3px 8px;border-radius:3px;font-size:.62em;background:rgba(0,0,0,.55);
+  border-right:3px solid #00ffcc;text-align:right}
+#apiRow{position:absolute;bottom:88px;right:16px;display:flex;gap:7px;pointer-events:all}
+#apiRow input{padding:5px 10px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.22);
+  color:#fff;font-family:'Courier New',monospace;font-size:.68em;border-radius:4px;width:180px}
+#apiRow input::placeholder{color:rgba(255,255,255,.28)}
+#apiRow button{padding:5px 10px;background:rgba(0,150,255,.12);border:1px solid rgba(0,150,255,.32);
+  color:#44aaff;font-family:'Courier New',monospace;font-size:.68em;cursor:pointer;border-radius:4px}
+#poemMode{position:absolute;bottom:88px;left:16px;display:flex;gap:7px;pointer-events:all}
+#poemMode button{padding:5px 12px;background:rgba(255,200,100,.1);border:1px solid rgba(255,200,100,.3);
+  color:#ffcc66;font-family:'Cormorant Garamond',serif;font-size:.85em;cursor:pointer;border-radius:4px}
+#loading{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;z-index:100;transition:opacity .9s}
+#loadT{font-size:2em;color:#00ffcc;text-shadow:0 0 22px #00ffcc;letter-spacing:10px;margin-bottom:18px}
+#loadM{font-size:.8em;color:rgba(255,255,255,.45);letter-spacing:2px;margin-top:12px;text-align:center;max-width:300px}
+.bar{width:220px;height:2px;background:rgba(255,255,255,.07);overflow:hidden;margin:4px 0}
+.bar::after{content:'';display:block;width:40%;height:100%;
+  background:linear-gradient(to right,transparent,#00ffcc,transparent);animation:scan 1s infinite}
+@keyframes scan{from{transform:translateX(-120%)}to{transform:translateX(350%)}}
+</style>
+</head>
+<body>
+<video id="video" autoplay muted playsinline></video>
+<canvas id="cvMain"></canvas>
+<canvas id="cvGeom"></canvas>
+<canvas id="cvPoem"></canvas>
+<div id="ui">
+  <div id="topBar">
+    <div class="dot"></div>
+    <div id="title">◈ NEXUS · SACRED STREAM</div>
+    <div id="fps">0 FPS</div>
+  </div>
+  <div id="leftPanel">
+    <div class="plabel">▸ COCO DETECTED</div>
+  </div>
+  <div id="segInfo">
+    <div class="plabel" style="text-align:right">SCENE ▸</div>
+  </div>
+  <div id="bottomBar">
+    <div class="icard"><div class="ilabel">☁ Weather</div><div class="ival" id="wdisp" style="color:#ffcc44">—</div></div>
+    <div class="icard"><div class="ilabel">⚡ BPM</div><div class="ival" id="bdisp" style="color:#ff6644">120</div></div>
+    <div class="icard"><div class="ilabel">🔗 Net</div><div class="ival" id="ndisp" style="color:#44ffcc">0</div></div>
+    <div class="icard"><div class="ilabel">👁 Objects</div><div class="ival" id="odisp" style="color:#cc44ff">0</div></div>
+    <div class="icard"><div class="ilabel">◬ Segments</div><div class="ival" id="sdisp" style="color:#44ccff">0</div></div>
+    <div class="icard"><div class="ilabel">✦ Geometry</div><div class="ival" id="gdisp" style="color:#ffaa44">0</div></div>
+  </div>
+  <div id="btns">
+    <button class="btn" id="camBtn" onclick="switchCamera()">⟳ CAM</button>
+    <button class="btn" id="audioBtn" onclick="startAudio()">♪ AUDIO</button>
+    <button class="btn" id="recBtn" onclick="toggleRec()">⬤ REC</button>
+  </div>
+  <div id="poemMode">
+    <button onclick="forcePoem()">✦ GENERATE POEM</button>
+  </div>
+  <div id="apiRow">
+    <input id="apiKey" placeholder="OpenWeatherMap API Key" />
+    <button onclick="setWeatherKey()">SET</button>
+  </div>
+</div>
+<div id="loading">
+  <div id="loadT">NEXUS</div>
+  <div class="bar"></div>
+  <div id="loadM">Initializing sacred stream…</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/deeplab@0.2.1/dist/deeplab.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+//  NEXUS VISION II — Sacred Stream Diffusion
+// ═══════════════════════════════════════════════════════
+
+const video   = document.getElementById('video');
+const cvMain  = document.getElementById('cvMain');
+const cvGeom  = document.getElementById('cvGeom');
+const cvPoem  = document.getElementById('cvPoem');
+const ctxM    = cvMain.getContext('2d');
+const ctxG    = cvGeom.getContext('2d');
+const ctxP    = cvPoem.getContext('2d');
+
+// ── RESIZE ──────────────────────────────────────────────
+function resize(){
+  const w=innerWidth,h=innerHeight;
+  [cvMain,cvGeom,cvPoem].forEach(c=>{c.width=w;c.height=h;});
+}
+addEventListener('resize',resize); resize();
+
+// ── GLOBAL STATE ────────────────────────────────────────
+const S = {
+  // Detection
+  dets: [], segments: {},          // coco + deeplab results
+  // Weather
+  weather:{cond:'clear',temp:20,name:'Soleado',emoji:'☀️',fx:'clear'},
+  paletteHue:35, paletteSat:80, paletteLit:60,
+  // Network
+  net:{count:5},
+  // Audio
+  audioOn:false, bpm:120,
+  // Sacred geometry nodes
+  geoNodes: [],
+  // Poem
+  poemLines: [], poemActive: false, lastPoemTime: 0,
+  // Misc
+  apiKey:'', simWeatherIdx:0,
+  t:0, fps:0, frames:0, lastFpsT:0,
+  recording:false, recorder:null, chunks:[],
+  lastCocoTime:0, lastDeeplabTime:0,
+  rainDrops:[], snowFlakes:[], stormFlash:0,
+  // Dream diffusion ring buffer (last 4 frames of segmentation)
+  dreamBuf: [], dreamIdx: 0,
+  hasDeeplab: false
+};
+
+// ── CAMERA ──────────────────────────────────────────────
+let currentFacing = 'user'; // 'user' = frontal, 'environment' = trasera
+
+async function initCamera(facing){
+  facing = facing || currentFacing;
+  setMsg('Requesting camera…');
+  // Stop any existing stream first
+  if(video.srcObject){
+    video.srcObject.getTracks().forEach(t=>t.stop());
+    video.srcObject = null;
+  }
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video:{width:{ideal:1280},height:{ideal:720}, facingMode: facing},
+    audio:false
+  });
+  video.srcObject = stream;
+  await new Promise(r=>video.onloadedmetadata=r);
+  video.play();
+  currentFacing = facing;
+}
+
+async function switchCamera(){
+  const btn = document.getElementById('camBtn');
+  btn.textContent = '…';
+  btn.style.opacity = '.5';
+  try{
+    const next = currentFacing === 'user' ? 'environment' : 'user';
+    await initCamera(next);
+    btn.textContent = currentFacing === 'user' ? '⟳ FRONT' : '⟳ BACK';
+  }catch(e){
+    // Device may only have one camera — show briefly then restore
+    btn.textContent = '✗ 1 CAM';
+    setTimeout(()=>{ btn.textContent = currentFacing==='user'?'⟳ FRONT':'⟳ BACK'; },1500);
+  }
+  btn.style.opacity = '1';
+}
+
+// ── COCO-SSD ────────────────────────────────────────────
+let cocoModel=null;
+async function initCoco(){
+  setMsg('Loading COCO-SSD…');
+  cocoModel = await cocoSsd.load({base:'lite_mobilenet_v2'});
+}
+async function runCoco(){
+  if(!cocoModel||video.readyState<2) return;
+  const now=performance.now();
+  if(now-S.lastCocoTime<320) return;
+  S.lastCocoTime=now;
+  try{
+    S.dets = await cocoModel.detect(video,10,0.35);
+    buildGeoNodes();
+    updateSidebar();
+    updateAudioDynamic();
+  }catch(e){}
+}
+
+// ── DEEPLAB ADE20K ──────────────────────────────────────
+let deeplabModel=null;
+async function initDeeplab(){
+  setMsg('Loading DeepLab ADE20K (scene segmentation)…\nThis may take 30-60s on first load.');
+  try{
+    deeplabModel = await deeplab.load({base:'ade20k', quantizationBytes:2});
+    S.hasDeeplab=true;
+    setMsg('DeepLab ready ✓');
+  }catch(e){
+    console.warn('DeepLab unavailable:',e);
+    S.hasDeeplab=false;
+    setMsg('DeepLab unavailable — using COCO only');
+  }
+}
+
+// ADE20K class → sacred geometry type + color
+const SEG_MAP = {
+  'tree':        {geo:'flower',    hue:120, label:'árbol'},
+  'building':    {geo:'metatron',  hue:220, label:'edificio'},
+  'skyscraper':  {geo:'metatron',  hue:230, label:'rascacielos'},
+  'sky':         {geo:'celestial', hue:200, label:'cielo'},
+  'floor':       {geo:'yantra',    hue:30,  label:'suelo'},
+  'grass':       {geo:'flower',    hue:100, label:'césped'},
+  'plant':       {geo:'fibonacci', hue:130, label:'planta'},
+  'flower':      {geo:'fibonacci', hue:310, label:'flor'},
+  'mountain':    {geo:'yantra',    hue:50,  label:'montaña'},
+  'water':       {geo:'torus',     hue:195, label:'agua'},
+  'sea':         {geo:'torus',     hue:200, label:'mar'},
+  'river':       {geo:'torus',     hue:190, label:'río'},
+  'person':      {geo:'merkaba',   hue:280, label:'persona'},
+  'animal':      {geo:'torus',     hue:40,  label:'animal'},
+  'car':         {geo:'metatron',  hue:210, label:'auto'},
+  'road':        {geo:'yantra',    hue:30,  label:'camino'},
+  'wall':        {geo:'metatron',  hue:240, label:'pared'},
+  'ceiling':     {geo:'celestial', hue:180, label:'techo'},
+  'windowpane':  {geo:'metatron',  hue:200, label:'ventana'},
+  'field':       {geo:'flower',    hue:110, label:'campo'},
+  'earth':       {geo:'yantra',    hue:35,  label:'tierra'},
+  'rock':        {geo:'yantra',    hue:45,  label:'roca'},
+  'table':       {geo:'merkaba',   hue:50,  label:'mesa'},
+  'chair':       {geo:'merkaba',   hue:60,  label:'silla'},
+  'sofa':        {geo:'merkaba',   hue:55,  label:'sofá'},
+  'house':       {geo:'metatron',  hue:220, label:'casa'},
+  'lake':        {geo:'torus',     hue:200, label:'lago'},
+  'palm':        {geo:'flower',    hue:115, label:'palma'},
+};
+
+// Dream diffusion color map (prompt semantic → visual params)
+const DREAM_MAP = {
+  tree:      {h:120, s:1.4, brightness:1.1, glow:'rgba(80,255,80,0.08)'},
+  building:  {h:220, s:.7,  brightness:.9,  glow:'rgba(80,120,255,0.06)'},
+  sky:       {h:200, s:1.2, brightness:1.2, glow:'rgba(80,180,255,0.1)'},
+  grass:     {h:100, s:1.5, brightness:1.0, glow:'rgba(50,220,50,0.08)'},
+  plant:     {h:130, s:1.6, brightness:1.1, glow:'rgba(100,255,100,0.1)'},
+  flower:    {h:310, s:1.8, brightness:1.2, glow:'rgba(255,100,200,0.12)'},
+  water:     {h:195, s:1.4, brightness:1.1, glow:'rgba(50,200,255,0.1)'},
+  person:    {h:280, s:1.3, brightness:1.0, glow:'rgba(200,50,255,0.1)'},
+  mountain:  {h:50,  s:.8,  brightness:.95, glow:'rgba(200,160,50,0.06)'},
+  default:   {h:180, s:1.0, brightness:1.0, glow:'rgba(0,255,200,0.06)'},
+};
+
+async function runDeeplab(){
+  if(!deeplabModel||video.readyState<2) return;
+  const now=performance.now();
+  if(now-S.lastDeeplabTime<1800) return;
+  S.lastDeeplabTime=now;
+  try{
+    const result = await deeplabModel.segment(video);
+    // legend = {className: [r,g,b]}
+    // Build segments presence set
+    S.segments = {};
+    Object.keys(result.legend).forEach(cls=>{
+      const key = cls.toLowerCase();
+      if(SEG_MAP[key]) S.segments[key] = result.legend[cls];
+    });
+    // Store segmentation map for dream diffusion
+    storeDreamFrame(result.segmentationMap, result.width, result.height);
+    updateSegSidebar();
+    maybeGeneratePoem();
+  }catch(e){console.warn('Deeplab err:',e);}
+}
+
+// Dream diffusion ring buffer
+function storeDreamFrame(map, w, h){
+  const oc = document.createElement('canvas');
+  oc.width=w; oc.height=h;
+  const c = oc.getContext('2d');
+  const imgd = new ImageData(new Uint8ClampedArray(map), w, h);
+  c.putImageData(imgd, 0, 0);
+  S.dreamBuf[S.dreamIdx%4] = oc;
+  S.dreamIdx++;
+}
+
+// ── SACRED GEOMETRY ENGINE ──────────────────────────────
+const PHI = 1.6180339887;
+
+// Node represents one sacred geometry instance
+class GeoNode {
+  constructor(x, y, r, type, hue, label){
+    this.x=x; this.y=y; this.r=r; this.type=type; this.hue=hue; this.label=label;
+    this.alpha=0; this.targetAlpha=0.7+Math.random()*.3;
+    this.rot=Math.random()*Math.PI*2;
+    this.age=0; this.maxAge=300+Math.random()*200;
+    this.pulsePhase=Math.random()*Math.PI*2;
+  }
+  update(bpm){
+    this.age++;
+    const fade=Math.min(1,this.age/40)*Math.max(0,(this.maxAge-this.age)/60);
+    this.alpha=this.targetAlpha*fade;
+    this.rot += 0.002 + bpm/60000;
+    this.hue = (this.hue+0.15)%360;
+  }
+  draw(ctx,t){
+    if(this.alpha<0.01) return;
+    const pulse=1+0.12*Math.sin(t*2*Math.PI*(S.bpm/60)+this.pulsePhase);
+    const r=this.r*pulse;
+    ctx.save();
+    ctx.translate(this.x,this.y);
+    ctx.rotate(this.rot);
+    ctx.globalAlpha=this.alpha;
+    switch(this.type){
+      case 'flower':    drawFlower(ctx,0,0,r,t,this.hue);   break;
+      case 'merkaba':   drawMerkaba(ctx,0,0,r,t,this.hue);  break;
+      case 'metatron':  drawMetatron(ctx,0,0,r,t,this.hue); break;
+      case 'yantra':    drawYantra(ctx,0,0,r,t,this.hue);   break;
+      case 'fibonacci': drawFibonacci(ctx,0,0,r,t,this.hue);break;
+      case 'torus':     drawTorus(ctx,0,0,r,t,this.hue);    break;
+      case 'celestial': drawCelestial(ctx,0,0,r,t,this.hue);break;
+      default:          drawFlower(ctx,0,0,r,t,this.hue);
+    }
+    // Label
+    ctx.globalAlpha=this.alpha*.7;
+    ctx.font='10px "Courier New"';
+    ctx.fillStyle=`hsl(${this.hue},100%,75%)`;
+    ctx.textAlign='center';
+    ctx.shadowBlur=6; ctx.shadowColor=`hsl(${this.hue},100%,60%)`;
+    ctx.fillText(this.label, 0, r+14);
+    ctx.restore();
+  }
+}
+
+// ─── Flower of Life ───
+function drawFlower(ctx, cx, cy, r, t, hue){
+  const rc = r*.42;
+  ctx.strokeStyle=`hsl(${hue},100%,68%)`;
+  ctx.lineWidth=1.2; ctx.shadowBlur=10; ctx.shadowColor=`hsl(${hue},100%,55%)`;
+  // Center
+  circle(ctx,cx,cy,rc);
+  // 6 petals
+  for(let i=0;i<6;i++){
+    const a=(i/6)*Math.PI*2;
+    circle(ctx, cx+Math.cos(a)*rc, cy+Math.sin(a)*rc, rc);
+  }
+  // Ring 2
+  for(let i=0;i<6;i++){
+    const a=(i/6)*Math.PI*2+Math.PI/6;
+    circle(ctx, cx+Math.cos(a)*rc*Math.sqrt(3), cy+Math.sin(a)*rc*Math.sqrt(3), rc);
+  }
+  // Outer double ring
+  ctx.globalAlpha*=0.4;
+  circle(ctx,cx,cy,r); circle(ctx,cx,cy,r*.95);
+}
+
+// ─── Merkaba (Star Tetrahedron) ───
+function drawMerkaba(ctx, cx, cy, r, t, hue){
+  ctx.strokeStyle=`hsl(${hue},100%,70%)`; ctx.lineWidth=1.4;
+  ctx.shadowBlur=12; ctx.shadowColor=`hsl(${hue},100%,60%)`;
+  // Up triangle (slow rotation)
+  const r1=r; ctx.beginPath();
+  for(let i=0;i<3;i++){
+    const a=(i/3)*Math.PI*2-Math.PI/2+t*.4;
+    i===0?ctx.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1)
+         :ctx.lineTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);
+  }
+  ctx.closePath(); ctx.stroke();
+  // Down triangle (opposite rotation)
+  ctx.strokeStyle=`hsl(${(hue+120)%360},100%,70%)`;
+  ctx.beginPath();
+  for(let i=0;i<3;i++){
+    const a=(i/3)*Math.PI*2+Math.PI/2-t*.4;
+    i===0?ctx.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1)
+         :ctx.lineTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);
+  }
+  ctx.closePath(); ctx.stroke();
+  // Inner hexagon
+  ctx.strokeStyle=`hsl(${hue},100%,80%)`; ctx.lineWidth=.8;
+  ctx.beginPath();
+  for(let i=0;i<6;i++){
+    const a=(i/6)*Math.PI*2;
+    const rx=cx+Math.cos(a)*r*.5, ry=cy+Math.sin(a)*r*.5;
+    i===0?ctx.moveTo(rx,ry):ctx.lineTo(rx,ry);
+  }
+  ctx.closePath(); ctx.stroke();
+  // Circles
+  circle(ctx,cx,cy,r); circle(ctx,cx,cy,r*.2);
+}
+
+// ─── Metatron's Cube ───
+function drawMetatron(ctx, cx, cy, r, t, hue){
+  const pts=[{x:cx,y:cy}];
+  for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2; pts.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r});}
+  for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2+Math.PI/6; pts.push({x:cx+Math.cos(a)*r*Math.sqrt(3),y:cy+Math.sin(a)*r*Math.sqrt(3)});}
+  // Circles
+  ctx.strokeStyle=`hsl(${hue},100%,65%)`; ctx.lineWidth=.9;
+  ctx.shadowBlur=8; ctx.shadowColor=`hsl(${hue},100%,55%)`;
+  pts.forEach(p=>circle(ctx,p.x,p.y,r*.35));
+  // Connection lines (low alpha)
+  const savedAlpha=ctx.globalAlpha;
+  ctx.globalAlpha*=.12; ctx.lineWidth=.5;
+  for(let i=0;i<pts.length;i++)
+    for(let j=i+1;j<pts.length;j++){
+      ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y); ctx.stroke();
+    }
+  ctx.globalAlpha=savedAlpha;
+  // Outer circles
+  ctx.lineWidth=1; circle(ctx,cx,cy,r); circle(ctx,cx,cy,r*Math.sqrt(3));
+}
+
+// ─── Sri Yantra (simplified) ───
+function drawYantra(ctx, cx, cy, r, t, hue){
+  ctx.strokeStyle=`hsl(${hue},100%,68%)`; ctx.lineWidth=1.2;
+  ctx.shadowBlur=10; ctx.shadowColor=`hsl(${hue},100%,55%)`;
+  // 4 scales alternating up/down triangles
+  [.95,.75,.55,.35].forEach((s,i)=>{
+    ctx.strokeStyle=`hsl(${(hue+i*30)%360},100%,${65+i*5}%)`;
+    const up=i%2===0;
+    const off=up?-Math.PI/2:Math.PI/2;
+    ctx.beginPath();
+    for(let j=0;j<3;j++){
+      const a=(j/3)*Math.PI*2+off+(up?t*.06:-t*.06);
+      j===0?ctx.moveTo(cx+Math.cos(a)*r*s,cy+Math.sin(a)*r*s)
+           :ctx.lineTo(cx+Math.cos(a)*r*s,cy+Math.sin(a)*r*s);
+    }
+    ctx.closePath(); ctx.stroke();
+  });
+  // Concentric circles (chakra rings)
+  [1,.7,.45,.2].forEach(s=>{
+    ctx.strokeStyle=`hsl(${hue},80%,70%)`; ctx.lineWidth=.6; ctx.globalAlpha*=1;
+    circle(ctx,cx,cy,r*s);
+  });
+  // Bindu (center dot)
+  ctx.fillStyle=`hsl(${hue},100%,80%)`; ctx.shadowBlur=15;
+  ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.fill();
+}
+
+// ─── Fibonacci / Golden Spiral ───
+function drawFibonacci(ctx, cx, cy, r, t, hue){
+  ctx.strokeStyle=`hsl(${hue},100%,68%)`; ctx.lineWidth=1.4;
+  ctx.shadowBlur=10; ctx.shadowColor=`hsl(${hue},100%,55%)`;
+  ctx.beginPath();
+  let cr=r*.04, angle=t;
+  const steps=400;
+  for(let i=0;i<steps;i++){
+    cr=r*.04*Math.pow(PHI, i/steps*3.8);
+    if(cr>r) break;
+    const x=cx+Math.cos(angle)*cr, y=cy+Math.sin(angle)*cr;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    angle+=.09;
+  }
+  ctx.stroke();
+  // Fibonacci circles
+  const fibs=[1,1,2,3,5,8,13];
+  let fx=cx,fy=cy,dir=0;
+  fibs.forEach(f=>{
+    const fr=f*(r/21);
+    ctx.strokeStyle=`hsl(${(hue+f*10)%360},100%,60%)`; ctx.lineWidth=.7;
+    const angles=[0,Math.PI/2,Math.PI,3*Math.PI/2];
+    ctx.beginPath();
+    ctx.arc(fx,fy,fr,angles[dir],angles[dir]+Math.PI/2);
+    ctx.stroke();
+    const offsets=[[1,0],[0,-1],[-1,0],[0,1]];
+    fx+=offsets[dir][0]*fr; fy+=offsets[dir][1]*fr;
+    dir=(dir+1)%4;
+  });
+}
+
+// ─── Torus (2D projection) ───
+function drawTorus(ctx, cx, cy, r, t, hue){
+  const n=16, R=r*.7, rc=r*.3;
+  for(let i=0;i<n;i++){
+    const a=(i/n)*Math.PI*2+t*.25;
+    const depth=Math.sin(a);
+    const px=cx+Math.cos(a)*R*.85;
+    const py=cy+Math.sin(a)*R*.45;
+    const pr=rc*(0.3+0.7*(depth+1)/2);
+    const alpha=(depth+1)/2;
+    ctx.globalAlpha=alpha*.85; ctx.strokeStyle=`hsl(${(hue+i*8)%360},100%,65%)`;
+    ctx.lineWidth=1; ctx.shadowBlur=6+alpha*8; ctx.shadowColor=`hsl(${hue},100%,55%)`;
+    circle(ctx,px,py,pr);
+  }
+  // Spine
+  ctx.globalAlpha=.4; ctx.strokeStyle=`hsl(${hue},80%,70%)`; ctx.lineWidth=.8;
+  ctx.beginPath();
+  for(let i=0;i<=n;i++){
+    const a=(i/n)*Math.PI*2+t*.25;
+    const px=cx+Math.cos(a)*R*.85, py=cy+Math.sin(a)*R*.45;
+    i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+  }
+  ctx.closePath(); ctx.stroke();
+}
+
+// ─── Celestial / Mandala ───
+function drawCelestial(ctx, cx, cy, r, t, hue){
+  ctx.strokeStyle=`hsl(${hue},100%,70%)`; ctx.lineWidth=.9;
+  ctx.shadowBlur=10; ctx.shadowColor=`hsl(${hue},100%,60%)`;
+  // Radiating lines
+  for(let i=0;i<12;i++){
+    const a=(i/12)*Math.PI*2+t*.1;
+    ctx.globalAlpha=.5;
+    ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*r*.2,cy+Math.sin(a)*r*.2);
+    ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r); ctx.stroke();
+  }
+  // Concentric circles
+  [1,.8,.6,.4,.2].forEach((s,i)=>{
+    ctx.globalAlpha=.3+s*.5;
+    ctx.strokeStyle=`hsl(${(hue+i*15)%360},100%,70%)`;
+    circle(ctx,cx,cy,r*s);
+  });
+  // Star pattern
+  ctx.globalAlpha=.6; ctx.strokeStyle=`hsl(${hue},100%,85%)`; ctx.lineWidth=1.1;
+  ctx.beginPath();
+  for(let i=0;i<8;i++){
+    const a=(i/8)*Math.PI*2+t*.08;
+    const inner=r*.4, outer=r*.85;
+    const ra=a+Math.PI/8;
+    i===0?ctx.moveTo(cx+Math.cos(a)*outer,cy+Math.sin(a)*outer):ctx.lineTo(cx+Math.cos(a)*outer,cy+Math.sin(a)*outer);
+    ctx.lineTo(cx+Math.cos(ra)*inner,cy+Math.sin(ra)*inner);
+  }
+  ctx.closePath(); ctx.stroke();
+}
+
+function circle(ctx,x,y,r){
+  ctx.beginPath(); ctx.arc(x,y,Math.max(1,r),0,Math.PI*2); ctx.stroke();
+}
+
+// ── BUILD GEO NODES ─────────────────────────────────────
+function buildGeoNodes(){
+  const W=cvMain.width, H=cvMain.height;
+  // Add nodes from COCO detections
+  S.dets.forEach(det=>{
+    const [x,y,w,h]=det.bbox;
+    const cx=x+w/2, cy=y+h/2;
+    const r=Math.min(w,h)*.45;
+    const cat=catOf(det.class);
+    const info=COCO_GEO[cat]||{geo:'flower',hue:180};
+    // Only add if no nearby node exists
+    const near=S.geoNodes.find(n=>Math.hypot(n.x-cx,n.y-cy)<r*.8);
+    if(!near && r>20)
+      S.geoNodes.push(new GeoNode(cx,cy,r,info.geo,info.hue,det.class));
+  });
+  // Add nodes from DeepLab segments at distributed positions
+  Object.keys(S.segments).forEach(cls=>{
+    const info=SEG_MAP[cls];
+    if(!info) return;
+    // Place geometry in a random area not overlapping existing nodes
+    const x=W*.15+Math.random()*W*.7;
+    const y=H*.15+Math.random()*H*.7;
+    const r=50+Math.random()*60;
+    const near=S.geoNodes.find(n=>Math.hypot(n.x-x,n.y-y)<80);
+    if(!near)
+      S.geoNodes.push(new GeoNode(x,y,r,info.geo,info.hue,info.label));
+  });
+  // Cap and prune dead nodes
+  S.geoNodes = S.geoNodes.filter(n=>n.alpha>0.005||n.age<10);
+  if(S.geoNodes.length>30) S.geoNodes.splice(0,S.geoNodes.length-30);
+}
+
+const COCO_GEO = {
+  person:    {geo:'merkaba',   hue:280},
+  vehicle:   {geo:'metatron',  hue:210},
+  phone:     {geo:'yantra',    hue:180},
+  laptop:    {geo:'metatron',  hue:200},
+  plant:     {geo:'fibonacci', hue:120},
+  animal:    {geo:'torus',     hue:45},
+  furniture: {geo:'yantra',    hue:50},
+  bottle:    {geo:'torus',     hue:190},
+  default:   {geo:'flower',    hue:180}
+};
+function catOf(cls){
+  if(cls==='person') return 'person';
+  if(['car','truck','motorcycle','bus','bicycle'].includes(cls)) return 'vehicle';
+  if(cls==='cell phone') return 'phone';
+  if(cls==='laptop') return 'laptop';
+  if(['potted plant','broccoli','carrot'].includes(cls)) return 'plant';
+  if(['bird','cat','dog','horse','sheep','cow','elephant','bear','zebra','giraffe'].includes(cls)) return 'animal';
+  if(['chair','couch','bench','dining table'].includes(cls)) return 'furniture';
+  if(['bottle','wine glass','cup','bowl'].includes(cls)) return 'bottle';
+  return 'default';
+}
+
+// ── DREAM DIFFUSION OVERLAY ──────────────────────────────
+function drawDreamDiffusion(ctx){
+  if(S.dreamBuf.length===0) return;
+  const W=cvMain.width, H=cvMain.height;
+  // Blend last 4 segmentation frames with decreasing weight
+  const weights=[0.35,0.2,0.12,0.06];
+  S.dreamBuf.forEach((frame,i)=>{
+    if(!frame) return;
+    const w=weights[i]||0.05;
+    ctx.save();
+    ctx.globalAlpha=w;
+    ctx.globalCompositeOperation='screen';
+    ctx.drawImage(frame,0,0,W,H);
+    ctx.restore();
+  });
+  // Per-segment dream glow overlay
+  Object.entries(S.segments).forEach(([cls])=>{
+    const d=DREAM_MAP[cls]||DREAM_MAP.default;
+    ctx.save();
+    ctx.globalAlpha=0.04;
+    ctx.globalCompositeOperation='screen';
+    ctx.fillStyle=d.glow;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  });
+  // Chromatic aberration (StreamDiffusion aesthetic)
+  if(S.dets.length>0||Object.keys(S.segments).length>0){
+    const aberration=1.5;
+    ctx.save();
+    ctx.globalAlpha=0.04; ctx.globalCompositeOperation='screen';
+    ctx.drawImage(cvMain,aberration,0,W-aberration,H,0,0,W-aberration,H);
+    ctx.globalAlpha=0.04;
+    ctx.drawImage(cvMain,-aberration,0,W-aberration,H,aberration,0,W-aberration,H);
+    ctx.restore();
+  }
+}
+
+// ── WEATHER ──────────────────────────────────────────────
+const WCFG = {
+  clear:        {pal:[35,90,65],  bpm:120, name:'Soleado',   emoji:'☀️',  fx:'clear'},
+  clouds:       {pal:[210,20,55], bpm:100, name:'Nublado',   emoji:'☁️',  fx:'cloudy'},
+  rain:         {pal:[210,80,45], bpm:90,  name:'Lluvia',    emoji:'🌧️', fx:'rain'},
+  drizzle:      {pal:[200,60,50], bpm:85,  name:'Llovizna',  emoji:'🌦️', fx:'rain'},
+  thunderstorm: {pal:[270,60,40], bpm:160, name:'Tormenta',  emoji:'⛈️', fx:'storm'},
+  snow:         {pal:[200,30,85], bpm:75,  name:'Nieve',     emoji:'❄️',  fx:'snow'},
+  mist:         {pal:[180,15,65], bpm:80,  name:'Niebla',    emoji:'🌫️', fx:'cloudy'},
+};
+const WCONDS=['clear','clouds','rain','thunderstorm','snow'];
+const WTEMPS={clear:28,clouds:18,rain:15,thunderstorm:12,snow:-2};
+
+function applyWeather(cond){
+  const cfg=WCFG[cond]||WCFG.clear;
+  S.weather={cond,temp:WTEMPS[cond]||20,name:cfg.name,emoji:cfg.emoji,fx:cfg.fx};
+  S.paletteHue=cfg.pal[0]; S.paletteSat=cfg.pal[1]; S.paletteLit=cfg.pal[2];
+  S.bpm=cfg.bpm;
+  document.getElementById('bdisp').textContent=S.bpm;
+  document.getElementById('wdisp').textContent=`${cfg.emoji} ${S.weather.temp}°C`;
+  if(S.audioOn) Tone.Transport.bpm.rampTo(S.bpm,2);
+}
+function simWeather(){ applyWeather(WCONDS[S.simWeatherIdx++%WCONDS.length]); setTimeout(simWeather,22000+Math.random()*15000); }
+async function fetchWeather(){
+  try{
+    const d=await(await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Buenos+Aires&appid=${S.apiKey}&units=metric`)).json();
+    applyWeather(d.weather[0].main.toLowerCase());
+    S.weather.temp=Math.round(d.main.temp);
+  }catch(e){simWeather();}
+  setTimeout(fetchWeather,300000);
+}
+function setWeatherKey(){
+  S.apiKey=document.getElementById('apiKey').value.trim();
+  S.apiKey?fetchWeather():simWeather();
+}
+
+// ── NETWORK SIMULATION ───────────────────────────────────
+function scanNetwork(){
+  S.net.count=3+Math.floor(Math.random()*9);
+  document.getElementById('ndisp').textContent=S.net.count;
+  setTimeout(scanNetwork,8000+Math.random()*7000);
+}
+
+// ── POEM GENERATOR ───────────────────────────────────────
+const POETIC = {
+  // Nature
+  árbol:      ['el árbol milenario','las raíces que sueñan','la savia que sube','la corteza que recuerda'],
+  planta:     ['la planta que respira','el pétalo dormido','el verde que habla','la hoja que tiembla'],
+  flor:       ['la flor que se abre','el néctar del instante','el capullo que sangra luz','el aroma sin nombre'],
+  césped:     ['el pasto interminable','la hierba que canta','el suelo vivo','la tierra que respira'],
+  montaña:    ['la montaña que espera','la piedra que siente','el silencio de roca','el tiempo hecho piedra'],
+  cielo:      ['el cielo sin fondo','las nubes que piensan','el azul que sangra','el horizonte que huye'],
+  agua:       ['el agua que recuerda','el río que olvida','las gotas que caen','el mar que no duerme'],
+  // Urban
+  edificio:   ['el edificio de vidrio','las ventanas que miran','el cemento que sueña','la fachada sin rostro'],
+  // Living
+  persona:    ['la figura que late','los ojos que buscan','el aliento que existe','las manos que tocan'],
+  animal:     ['el animal que siente','el pelaje que vibra','los ojos sin mentira','la pata sobre la tierra'],
+  // Elements
+  tierra:     ['la tierra que guarda','el suelo que sostiene','la arcilla que moldea','el polvo que fue estrella'],
+  fuego:      ['el fuego que transforma','la llama que danza','el calor que enseña','la brasa que murmura'],
+  // Abstract
+  prana:      ['el prana invisible','la fuerza que circula','la energía que conecta','el hilo entre todo'],
+  luz:        ['la luz que no miente','el fotón que viaja','la claridad sin dueño','la vibración que ve'],
+};
+
+const WEATHER_VERSES = {
+  clear:        ['bajo el sol que todo iguala','en el calor que despierta','donde la luz no perdona','con el dorado encima'],
+  clouds:       ['entre las nubes que piensan','en la penumbra gris','donde el cielo duda','bajo el velo de gris'],
+  rain:         ['en la lluvia que limpia','mientras el agua borra','bajo las gotas que hablan','en el murmullo del agua'],
+  thunderstorm: ['entre relámpagos que preguntan','en el caos eléctrico','donde el trueno responde','en la tormenta que enseña'],
+  snow:         ['en el silencio blanco','donde la nieve entierra','bajo el frío que cristaliza','en la quietud helada'],
+};
+
+const CONNECTORS = ['y','pero','sin embargo','aunque','porque','mientras','quizás'];
+const CLOSINGS = [
+  'todo es prana',
+  'nada se pierde',
+  'el instante basta',
+  'la forma es vacío',
+  'la geometría respira',
+  'el universo nos ve',
+  'somos la red',
+  'el campo vibra',
+];
+
+function pickFrom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function shuffle(arr){ return [...arr].sort(()=>Math.random()-.5); }
+
+function generatePoem(objects, segments, weather){
+  const words=[];
+  // Collect from detected objects
+  objects.forEach(d=>{
+    const cat=catOf(d.class);
+    if(POETIC[d.class]) words.push(...POETIC[d.class]);
+    if(cat==='person') words.push(...POETIC.persona);
+    if(cat==='plant') words.push(...POETIC.planta);
+    if(cat==='animal') words.push(...POETIC.animal);
+  });
+  // Collect from segments
+  Object.keys(segments).forEach(cls=>{
+    if(POETIC[cls]) words.push(...POETIC[cls]);
+    if(cls.includes('tree')||cls.includes('plant')) words.push(...POETIC.árbol);
+    if(cls.includes('sky')) words.push(...POETIC.cielo);
+    if(cls.includes('water')||cls.includes('sea')) words.push(...POETIC.agua);
+    if(cls.includes('building')) words.push(...POETIC.edificio);
+    if(cls.includes('mountain')) words.push(...POETIC.montaña);
+    if(cls.includes('grass')||cls.includes('field')) words.push(...POETIC.césped);
+    if(cls.includes('flower')) words.push(...POETIC.flor);
+  });
+  // Add prana/luz as universal elements
+  words.push(...POETIC.prana,...POETIC.luz,...POETIC.tierra);
+
+  const pool=shuffle([...new Set(words)]);
+  const wv=pickFrom(WEATHER_VERSES[weather.cond]||WEATHER_VERSES.clear);
+  const conn=pickFrom(CONNECTORS);
+
+  // Generate 5-7 line poem
+  const lines=[];
+  lines.push(pool[0]||'la forma desconocida');
+  lines.push(wv);
+  lines.push(`${pool[1]||'el vacío'} ${conn} ${pool[2]||'el todo'}`);
+  lines.push(pool[3]||'el tiempo se dobla');
+  if(pool[4]) lines.push(pool[4]);
+  if(Math.random()>.5&&pool[5]) lines.push(pool[5]);
+  lines.push('— ' + pickFrom(CLOSINGS));
+  return lines;
+}
+
+// Poem visual system
+class PoemLine {
+  constructor(text, x, y, size){
+    this.text=text; this.x=x; this.y=y; this.size=size||22;
+    this.alpha=0; this.targetAlpha=0.4+Math.random()*.5;
+    this.vx=(Math.random()-.5)*.15; this.vy=-0.08-Math.random()*.12;
+    this.life=1; this.decay=0.0003+Math.random()*.0003;
+  }
+  update(){
+    this.alpha=Math.min(this.alpha+0.008,this.targetAlpha);
+    this.x+=this.vx; this.y+=this.vy; this.life-=this.decay;
+  }
+  draw(ctx){
+    if(this.life<=0) return;
+    ctx.save();
+    ctx.globalAlpha=Math.max(0,this.alpha*this.life);
+    ctx.font=`${this.size}px 'Cormorant Garamond', Georgia, serif`;
+    ctx.textAlign='center';
+    const hue=S.paletteHue;
+    ctx.shadowBlur=20; ctx.shadowColor=`hsla(${hue},80%,70%,0.7)`;
+    ctx.fillStyle=`hsla(${hue},40%,95%,1)`;
+    ctx.fillText(this.text,this.x,this.y);
+    ctx.restore();
+  }
+}
+
+function spawnPoem(lines){
+  const W=cvMain.width, H=cvMain.height;
+  const startY=H*.25+Math.random()*H*.25;
+  const cx=W*.3+Math.random()*W*.4;
+  S.poemLines=lines.map((text,i)=>{
+    const x=cx+(Math.random()-.5)*W*.3;
+    const y=startY+i*(28+Math.random()*8);
+    const size=i===lines.length-1?18:20+Math.random()*6;
+    const pl=new PoemLine(text,x,y,size);
+    pl.alpha=0; // fade in delayed
+    setTimeout(()=>{pl.targetAlpha=.35+Math.random()*.45;},i*600);
+    return pl;
+  });
+  S.poemActive=true; S.lastPoemTime=S.t;
+}
+
+function maybeGeneratePoem(){
+  if(S.t-S.lastPoemTime > 28){
+    forcePoem();
+  }
+}
+function forcePoem(){
+  const lines=generatePoem(S.dets, S.segments, S.weather);
+  spawnPoem(lines);
+}
+
+// ── WEATHER FX ───────────────────────────────────────────
+function initFX(){
+  const W=cvMain.width, H=cvMain.height;
+  S.rainDrops=Array.from({length:220},()=>({x:Math.random()*W,y:Math.random()*H,spd:7+Math.random()*9,len:14+Math.random()*22,a:.25+Math.random()*.5}));
+  S.snowFlakes=Array.from({length:160},()=>({x:Math.random()*W,y:Math.random()*H,r:1+Math.random()*3,spd:.4+Math.random()*1.8,drift:(Math.random()-.5)*.4,a:.5+Math.random()*.5}));
+}
+function drawFX(ctx,fx){
+  const W=cvMain.width,H=cvMain.height;
+  if(fx==='rain'||fx==='storm'){
+    ctx.save(); ctx.strokeStyle=fx==='storm'?'rgba(200,200,255,.55)':'rgba(140,180,255,.45)'; ctx.lineWidth=1;
+    S.rainDrops.forEach(d=>{d.y+=d.spd;d.x-=1.5;if(d.y>H){d.y=0;d.x=Math.random()*W;}if(d.x<0)d.x=W;ctx.globalAlpha=d.a;ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-2,d.y+d.len);ctx.stroke();});
+    ctx.restore();
+    if(fx==='storm'&&Math.random()<.006) S.stormFlash=12;
+    if(S.stormFlash>0){ctx.save();ctx.fillStyle=`rgba(230,210,255,${S.stormFlash/60})`;ctx.fillRect(0,0,W,H);ctx.restore();S.stormFlash--;}
+  }
+  if(fx==='snow'){
+    ctx.save();
+    S.snowFlakes.forEach(f=>{f.y+=f.spd;f.x+=f.drift;if(f.y>H){f.y=0;f.x=Math.random()*W;}if(f.x<0||f.x>W)f.x=Math.random()*W;ctx.globalAlpha=f.a;ctx.fillStyle='rgba(220,240,255,.9)';ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fill();});
+    ctx.restore();
+  }
+}
+
+// ── WEATHER PALETTE OVERLAY ──────────────────────────────
+function drawPaletteOverlay(ctx){
+  const W=cvMain.width,H=cvMain.height;
+  const {paletteHue:ph,paletteSat:ps,paletteLit:pl}=S;
+  ctx.save();
+  ctx.globalCompositeOperation='color'; ctx.globalAlpha=.07;
+  ctx.fillStyle=`hsl(${ph},${ps}%,${pl}%)`; ctx.fillRect(0,0,W,H);
+  ctx.restore();
+  ctx.save();
+  const vg=ctx.createRadialGradient(W/2,H/2,H*.28,W/2,H/2,H*.82);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,`hsla(${ph},70%,4%,.55)`);
+  ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+  ctx.restore();
+}
+
+// ── BOUNDING BOX LABELS (COCO) ───────────────────────────
+const PCAT = {
+  person:   {clear:'aura de fuego dorado',clouds:'silueta en la bruma',rain:'figura en la lluvia',thunderstorm:'sombra entre relámpagos',snow:'calma en la nieve'},
+  vehicle:  {clear:'cromo bajo el sol',clouds:'metal en la bruma',rain:'reflejo mojado',thunderstorm:'acero en la tormenta',snow:'hielo en movimiento'},
+  phone:    {clear:'señales digitales',clouds:'interferencia estática',rain:'glitch acuático',thunderstorm:'caos de datos',snow:'código congelado'},
+  laptop:   {clear:'matrix luminosa',clouds:'terminal nebuloso',rain:'datos en lluvia',thunderstorm:'hack en la tormenta',snow:'código helado'},
+  plant:    {clear:'vida bajo el sol',clouds:'verde en la penumbra',rain:'floreciendo en lluvia',thunderstorm:'raíces en la tormenta',snow:'brote en el frío'},
+  animal:   {clear:'espíritu salvaje',clouds:'espíritu en la bruma',rain:'fur brillante',thunderstorm:'fuerza elemental',snow:'criatura de nieve'},
+  default:  {clear:'entidad detectada',clouds:'forma en bruma',rain:'presencia mojada',thunderstorm:'anomalía',snow:'forma helada'},
+};
+function getPrompt(cat){ return (PCAT[cat]||PCAT.default)[S.weather.cond]||'prana detectado'; }
+
+const BOX_COLORS={
+  person:   [255,60,255],vehicle:[150,210,255],phone:[255,60,100],
+  laptop:   [0,220,55],  plant:  [60,255,90], animal:[255,160,50],
+  furniture:[100,160,255],bottle:[60,200,255], default:[200,200,200]
+};
+
+function drawBoxes(ctx){
+  S.dets.forEach(det=>{
+    const [x,y,w,h]=det.bbox;
+    const cat=catOf(det.class);
+    const c=BOX_COLORS[cat]||BOX_COLORS.default;
+    const hue=S.paletteHue;
+    const t=S.t;
+
+    ctx.save();
+    // Main box with weather-tinted glow
+    ctx.strokeStyle=`rgba(${c.join(',')},0.9)`;
+    ctx.lineWidth=1.8; ctx.shadowBlur=12;
+    ctx.shadowColor=`rgba(${c.join(',')},0.7)`;
+    ctx.strokeRect(x,y,w,h);
+    // Corner brackets
+    const bs=Math.min(w,h)*.14;
+    ctx.lineWidth=2.5;
+    [[x,y,1,1],[x+w,y,-1,1],[x,y+h,1,-1],[x+w,y+h,-1,-1]].forEach(([cx,cy,dx,dy])=>{
+      ctx.beginPath();ctx.moveTo(cx,cy+dy*bs);ctx.lineTo(cx,cy);ctx.lineTo(cx+dx*bs,cy);ctx.stroke();
+    });
+    // Scan line
+    const sl=y+((t*160)%h);
+    ctx.strokeStyle=`rgba(${c.join(',')},0.45)`; ctx.lineWidth=1; ctx.shadowBlur=0;
+    ctx.beginPath();ctx.moveTo(x,sl);ctx.lineTo(x+w,sl);ctx.stroke();
+    // Label
+    const label=`${det.class} ${Math.round(det.score*100)}%`;
+    const prompt=getPrompt(cat);
+    ctx.font='bold 12px "Courier New",monospace';
+    const tw=ctx.measureText(label).width+16;
+    const ly2=Math.max(y-34,4);
+    ctx.fillStyle=`rgba(${c.join(',')},0.88)`;
+    rrect(ctx,x,ly2,tw,22,3); ctx.fill();
+    ctx.fillStyle='#000'; ctx.fillText(label,x+8,ly2+14);
+    ctx.font='10px "Courier New",monospace';
+    ctx.fillStyle=`rgba(${c.join(',')},0.65)`;
+    ctx.shadowBlur=6; ctx.shadowColor=`rgba(${c.join(',')},0.5)`;
+    ctx.fillText(`◈ ${prompt}`,x,ly2+36);
+    ctx.restore();
+  });
+}
+function rrect(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
+
+// ── SIDEBAR ──────────────────────────────────────────────
+function updateSidebar(){
+  const panel=document.getElementById('leftPanel');
+  [...panel.querySelectorAll('.otag')].forEach(e=>e.remove());
+  S.dets.forEach(det=>{
+    const cat=catOf(det.class);
+    const c=BOX_COLORS[cat]||BOX_COLORS.default;
+    const el=document.createElement('div'); el.className='otag';
+    el.style.borderLeftColor=`rgb(${c.join(',')})`;
+    el.innerHTML=`<span style="color:rgb(${c.join(',')})">◈</span> ${det.class} <span style="opacity:.45">${Math.round(det.score*100)}%</span>
+    <div class="oprm">${getPrompt(cat)}</div>`;
+    panel.appendChild(el);
+  });
+  document.getElementById('odisp').textContent=S.dets.length;
+  document.getElementById('gdisp').textContent=S.geoNodes.length;
+}
+function updateSegSidebar(){
+  const panel=document.getElementById('segInfo');
+  [...panel.querySelectorAll('.segtag')].forEach(e=>e.remove());
+  const keys=Object.keys(S.segments).slice(0,8);
+  keys.forEach(cls=>{
+    const info=SEG_MAP[cls]; if(!info) return;
+    const el=document.createElement('div'); el.className='segtag';
+    el.style.borderRightColor=`hsl(${info.hue},80%,60%)`;
+    el.style.color=`hsl(${info.hue},80%,70%)`;
+    el.textContent=info.label;
+    panel.appendChild(el);
+  });
+  document.getElementById('sdisp').textContent=keys.length;
+}
+
+// ── AUDIO ────────────────────────────────────────────────
+let synths={}, loops={};
+async function startAudio(){
+  if(S.audioOn) return;
+  await Tone.start(); S.audioOn=true;
+  const btn=document.getElementById('audioBtn');
+  btn.textContent='♪ ON'; btn.classList.add('on');
+  const rev=new Tone.Reverb({decay:3.5,wet:.4}).toDestination();
+  const dly=new Tone.FeedbackDelay({delayTime:'8n',feedback:.3,wet:.2}).connect(rev);
+  const dist=new Tone.Distortion({distortion:.1,wet:.1}).connect(dly);
+  synths.bass=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.01,decay:.2,sustain:.5,release:.6}}).connect(dist);
+  synths.bass.volume.value=-5;
+  synths.mel=new Tone.PolySynth(Tone.Synth,{oscillator:{type:'sine'},envelope:{attack:.06,decay:.3,sustain:.3,release:1.2}}).connect(rev);
+  synths.mel.volume.value=-12;
+  synths.perc=new Tone.MembraneSynth({pitchDecay:.05,octaves:6,envelope:{attack:.001,decay:.18,sustain:0,release:.1}}).connect(dist);
+  synths.perc.volume.value=-8;
+  synths.noise=new Tone.NoiseSynth({noise:{type:'pink'},envelope:{attack:1,decay:0,sustain:1,release:1}}).connect(rev);
+  synths.noise.volume.value=-40;
+  const SCALES={
+    clear:['E4','G4','A4','B4','E5',null,'D5',null],
+    clouds:['D4',null,'F4','A4',null,'C5',null,'Bb4'],
+    rain:['A3','C4','E4',null,'G4',null,'A4','E4'],
+    thunderstorm:['C4','Eb4','G4','Bb4','C5',null,'Ab4',null],
+    snow:['C5','E5','G5',null,'A5','G5',null,'E5'],
+  };
+  loops.bass=new Tone.Sequence((t,n)=>{if(n)synths.bass.triggerAttackRelease(n,'8n',t);},
+    ['C2',null,'C2',null,'G1',null,'C2',null],'8n');
+  loops.mel=new Tone.Sequence((t,n)=>{if(n)synths.mel.triggerAttackRelease(n,'16n',t);},
+    (SCALES[S.weather.cond]||SCALES.clear),'16n');
+  loops.perc=new Tone.Sequence((t,n)=>{synths.perc.triggerAttackRelease(n,'16n',t);},
+    ['C1',null,null,null,'C1',null,'C1',null,'C1',null,null,null,'C1',null,null,null],'16n');
+  Tone.Transport.bpm.value=S.bpm;
+  Tone.Transport.start();
+  loops.bass.start(0); loops.mel.start(0); loops.perc.start(0);
+}
+function updateAudioDynamic(){
+  if(!S.audioOn) return;
+  const nv=(S.weather.fx==='rain'||S.weather.fx==='storm')?-18:-40;
+  synths.noise?.volume.rampTo(nv,2);
+}
+
+// ── RECORDING ────────────────────────────────────────────
+function toggleRec(){
+  const btn=document.getElementById('recBtn');
+  if(!S.recording){
+    const stream=cvMain.captureStream(30);
+    try{S.recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp9'});}
+    catch(e){S.recorder=new MediaRecorder(stream);}
+    S.chunks=[];
+    S.recorder.ondataavailable=e=>{if(e.data.size>0)S.chunks.push(e.data);};
+    S.recorder.onstop=()=>{
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob(S.chunks,{type:'video/webm'}));
+      a.download=`nexus-${Date.now()}.webm`; a.click();
+    };
+    S.recorder.start(100); S.recording=true;
+    btn.textContent='⬛ STOP'; btn.classList.add('rec');
+  }else{
+    S.recorder.stop(); S.recording=false;
+    btn.textContent='⬤ REC'; btn.classList.remove('rec');
+  }
+}
+
+// ── RENDER LOOP ──────────────────────────────────────────
+function render(ts){
+  S.t=ts/1000; S.frames++;
+  if(ts-S.lastFpsT>=1000){
+    S.fps=S.frames; S.frames=0; S.lastFpsT=ts;
+    document.getElementById('fps').textContent=`${S.fps} FPS`;
+  }
+  const W=cvMain.width, H=cvMain.height;
+
+  // ─ Main canvas ─
+  ctxM.clearRect(0,0,W,H);
+  if(video.readyState>=2) ctxM.drawImage(video,0,0,W,H);
+  else{ ctxM.fillStyle='#111'; ctxM.fillRect(0,0,W,H); }
+
+  // Dream diffusion overlay (segmentation blended)
+  drawDreamDiffusion(ctxM);
+  drawPaletteOverlay(ctxM);
+  drawFX(ctxM,S.weather.fx);
+
+  // Bounding boxes + labels
+  drawBoxes(ctxM);
+
+  // ─ Geometry canvas ─
+  ctxG.clearRect(0,0,W,H);
+  S.geoNodes.forEach(n=>{ n.update(S.bpm); n.draw(ctxG,S.t); });
+  // Prana connection lines between nearby nodes
+  ctxG.save();
+  for(let i=0;i<S.geoNodes.length;i++){
+    for(let j=i+1;j<S.geoNodes.length;j++){
+      const a=S.geoNodes[i], b=S.geoNodes[j];
+      const d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(d<220){
+        const alpha=Math.min(a.alpha,b.alpha)*(1-d/220)*0.35;
+        ctxG.globalAlpha=alpha;
+        ctxG.strokeStyle=`hsl(${(a.hue+b.hue)/2},100%,70%)`;
+        ctxG.lineWidth=.7; ctxG.shadowBlur=8;
+        ctxG.shadowColor=`hsl(${(a.hue+b.hue)/2},100%,60%)`;
+        ctxG.beginPath(); ctxG.moveTo(a.x,a.y); ctxG.lineTo(b.x,b.y); ctxG.stroke();
+      }
+    }
+  }
+  ctxG.restore();
+
+  // ─ Poem canvas ─
+  ctxP.clearRect(0,0,W,H);
+  if(S.poemActive){
+    S.poemLines=S.poemLines.filter(l=>l.life>0);
+    S.poemLines.forEach(l=>{ l.update(); l.draw(ctxP); });
+    if(S.poemLines.length===0) S.poemActive=false;
+  }
+
+  // Async AI tasks (non-blocking)
+  runCoco();
+  runDeeplab();
+
+  requestAnimationFrame(render);
+}
+
+// ── INIT ─────────────────────────────────────────────────
+function setMsg(m){ document.getElementById('loadM').textContent=m; }
+
+async function init(){
+  try{ await initCamera(); } catch(e){ setMsg('Camera error: '+e.message); return; }
+  await initCoco();
+  await initDeeplab();
+  scanNetwork();
+  simWeather();
+  initFX();
+  // Auto-generate first poem after 5s
+  setTimeout(forcePoem, 5000);
+  // Poem every 30s
+  setInterval(forcePoem, 30000);
+
+  setMsg('◈ Sacred Stream ready');
+  setTimeout(()=>{
+    const el=document.getElementById('loading');
+    el.style.opacity='0';
+    setTimeout(()=>{ el.style.display='none'; requestAnimationFrame(render); },900);
+  },500);
+}
+init();
+</script>
+</body>
+</html>
